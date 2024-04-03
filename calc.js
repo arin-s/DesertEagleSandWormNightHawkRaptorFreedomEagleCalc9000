@@ -5,8 +5,8 @@ let BLACKLIST = [" ", "", undefined];
 let WHITELIST = ["+", "-", "*", "/"];
 
 function operate(leftVar, rightVar, opReg, rightNeg, leftNeg) {
-  leftVar = parseInt(leftVar);
-  rightVar = parseInt(rightVar);
+  leftVar = parseFloat(leftVar);
+  rightVar = parseFloat(rightVar);
   if (leftNeg)
     leftVar *= -1;
   if (rightNeg)
@@ -24,6 +24,7 @@ function operate(leftVar, rightVar, opReg, rightNeg, leftNeg) {
 }
 
 function parse() {
+  let leftVar = null, rightVar = null, opReg = null, rightNeg = false, leftNeg = false;
   let invalidTokens = [];
   Array.from(input.value).forEach((token) => {
     if (isNaN(token) && !WHITELIST.includes(token))
@@ -33,47 +34,72 @@ function parse() {
     alert(`Invalid tokens: ${invalidTokens.toString()}`);
     return;
   }
-  let groups = input.value.split(regex);
-  groups = groups.filter((str) => !BLACKLIST.includes(str));
-  let leftVar = null, rightVar = null, opReg = null, rightNeg = false, leftNeg = false;
-  for (token of groups) {
-    if (!isNaN(token)) {
-      if (leftVar === null) {
-        leftVar = token;
-      } else if (opReg !== null) {
-        rightVar = token;
-        //Right register filled, do operation then clean
-        leftVar = operate(leftVar, rightVar, opReg, rightNeg, leftNeg);
-        rightVar = null, opReg = null, rightNeg = false, leftNeg = false;
-      } else {
-        alert("SYNTAX ERROR, ABORTING\nReason: Numbers not connected w/ operator");
-        return;
-      }
-    } else if (typeof token === "string") {
-      if (token === "-") {
+  let tokens = input.value.split(regex);
+  tokens = tokens.filter((str) => !BLACKLIST.includes(str));
+  //BODMAS
+  let orderOfOps = ["/*", "+-"];
+  for (order of orderOfOps) {
+    leftVar = rightVar = opReg = null, rightNeg = leftNeg = false;
+    let newTokens = [];
+    for (token of tokens) {
+      if (!isNaN(token)) {
         if (leftVar === null) {
-          leftNeg = !leftNeg;
-        } else if (opReg === null) {
-          opReg = token;
+          leftVar = token;
+        } else if (opReg !== null) {
+          rightVar = token;
+          //If incorrect order, dump leftVar, leftNeg and opReg
+          if (!order.includes(opReg)) {
+            if (leftNeg)
+              newTokens.push("-");
+            newTokens.push(leftVar);
+            newTokens.push(opReg);
+            leftVar = rightVar;
+            leftNeg = rightNeg;
+            rightVar = null, opReg = null, rightNeg = false;
+          } else {
+            //Right register filled, do operation then clean
+            leftVar = operate(leftVar, rightVar, opReg, rightNeg, leftNeg);
+            rightVar = null, opReg = null, rightNeg = false, leftNeg = false;
+          }
         } else {
-          rightNeg = !rightNeg;
+          alert("SYNTAX ERROR, ABORTING\nReason: Numbers not connected w/ operator");
+          return;
         }
-      } else if (leftVar !== null && opReg === null) {
-        opReg = token;
-      } else if (leftVar === null) {
-        alert(`SYNTAX ERROR, ABORTING\nReason: "${token}" is missing a number on the left side`);
-        return
-      } else if (opReg !== null) {
-        alert("SYNTAX ERROR, ABORTING\nReason: Two operators next to each other");
+      } else if (typeof token === "string") {
+        if (token === "-") {
+          if (leftVar === null) {
+            leftNeg = !leftNeg;
+          } else if (opReg === null) {
+            opReg = token;
+          } else {
+            rightNeg = !rightNeg;
+          }
+        } else if (leftVar !== null && opReg === null) {
+          opReg = token;
+        } else if (leftVar === null) {
+          alert(`SYNTAX ERROR, ABORTING\nReason: "${token}" is missing a number on the left side`);
+          return
+        } else if (opReg !== null) {
+          alert("SYNTAX ERROR, ABORTING\nReason: Two operators next to each other");
+          return;
+        }
+      } else {
+        alert("SYNTAX ERROR, ABORTING\nReason: Unknown token type");
         return;
       }
-    } else {
-      alert("SYNTAX ERROR, ABORTING\nReason: Unknown token type");
-      return;
     }
+    if (!(orderOfOps.lastIndexOf() == orderOfOps.indexOf(order))) {
+      
+      if (leftNeg)
+        newTokens.push("-");
+      newTokens.push(leftVar);
+    }
+    tokens = newTokens;
   }
   if (rightVar !== null || opReg !== null || leftNeg || rightNeg) {
-    alert("SYNTAX ERROR, ABORTING\nReason: End of expression not complete");
+    alert(`SYNTAX ERROR, ABORTING\nReason: End of expression not complete\n
+    Vars: rightVar: ${rightVar !== null} opReg: ${opReg !== null} 
+    leftNeg: ${leftNeg} rightNeg: ${rightNeg}`);
     return;
   }
   output.innerText = leftVar;
